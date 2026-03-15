@@ -2,7 +2,8 @@
 library(tidyverse)
 library(googlesheets4)
 library(janitor)
-
+library(magick)
+library(ggrepel)
 
 gs4_deauth()
 
@@ -55,9 +56,7 @@ ggsave("time_distribution_chart.png", width = 10, height = 6, dpi = 300)
 
 
 
-library(ggplot2)
-library(dplyr)
-library(magick)
+
 
 # Create Gantt data
 gantt_data <- data.frame(
@@ -76,7 +75,7 @@ p <- ggplot(gantt_data, aes(y = reorder(Space, -Start))) +
   geom_segment(aes(x = Start, xend = End, yend = Space, color = Space),
                linewidth = 20, lineend = "round") +
   geom_text(aes(x = Midpoint, label = paste0(Duration, " hours")),
-            color = "white", fontface = "bold", size = 5) +
+            color = "black", fontface = "bold", size = 5) +
   scale_color_manual(values = c("First Space" = "#2E86AB",
                                 "Second Space" = "#A23B72",
                                 "Third Space" = "#F18F01")) +
@@ -98,51 +97,88 @@ p <- ggplot(gantt_data, aes(y = reorder(Space, -Start))) +
            color = "red", size = 3.5, fontface = "bold", hjust = 0.5) +
   labs(
     title = "Active Time Periods in Folding Beijing",
-    subtitle = "Red dashed lines mark 'The Change' - when the city physically folds",
+    subtitle = "The Change happens",
     x = "Time (48-Hour Cycle)",
     y = ""
   ) +
   theme_minimal() +
   theme(
-    plot.title = element_text(size = 16, face = "bold", hjust = 0.5, color = "white"),
-    plot.subtitle = element_text(size = 11, hjust = 0.5, color = "gray70"),
-    axis.text.y = element_text(size = 12, face = "bold", color = "white"),
-    axis.text.x = element_text(size = 9, color = "white"),
-    axis.title.x = element_text(color = "white", size = 11),
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5, color = "black"),
+    plot.subtitle = element_text(size = 11, hjust = 0.5, color = "black"),
+    axis.text.y = element_text(size = 12, face = "bold", color = "black"),
+    axis.text.x = element_text(size = 9, color = "black"),
+    axis.title.x = element_text(color = "black", size = 11),
     legend.position = "none",
     panel.grid.major.y = element_blank(),
     panel.grid.major.x = element_line(color = "gray30", linewidth = 0.3),
     panel.grid.minor = element_blank(),
-    plot.background = element_rect(fill = "#1a1a2e", color = NA),
-    panel.background = element_rect(fill = "#1a1a2e", color = NA)
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA)
   )
 
+p
 # Save the base plot
-ggsave("temp_gantt.png", plot = p, width = 14, height = 6, dpi = 300)
+ggsave("img-2.png", plot = p, width = 14, height = 6, dpi = 300)
 
-# Read the saved plot
-plot_img <- image_read("temp_gantt.png")
 
-# Read your folding city image
-city_img <- image_read("img-2.jpeg")  # or "img-2.jpg"
 
-# Resize the city image (adjust size as needed)
-city_img_resized <- image_scale(city_img, "500")  # 500 pixels wide
+# Create the data
+population_resources <- data.frame(
+  Space = c("First Space", "Second Space", "Third Space"),
+  Population_Millions = c(5, 25, 50),
+  Hours_Per_Million = c(4.80, 0.64, 0.16)
+)
 
-# Add a subtle border/frame to the image (optional)
-city_img_resized <- image_border(city_img_resized, "white", "2x2")
+# Create scatter plot
+ggplot(population_resources, aes(x = Population_Millions, y = Hours_Per_Million)) +
+  # Connect points to show pattern
+  geom_line(color = "gray50", linetype = "dotted", linewidth = 0.8) +
+  # Points with color (on top of line)
+  geom_point(aes(color = Space), size = 10, alpha = 0.8) +
+  # Labels using ggrepel for better positioning
+  geom_label_repel(aes(label = paste0(Space, "\n", 
+                                      Population_Millions, "M people\n", 
+                                      Hours_Per_Million, " hrs/M"),
+                       fill = Space),
+                   fontface = "bold", size = 3.5, lineheight = 0.85,
+                   box.padding = 0.5, point.padding = 0.5,
+                   segment.color = "gray50", segment.size = 0.5,
+                   color = "white", alpha = 0.9) +
+  # Colors
+  scale_color_manual(values = c("First Space" = "#2E86AB",
+                                "Second Space" = "#A23B72",
+                                "Third Space" = "#F18F01")) +
+  scale_fill_manual(values = c("First Space" = "#2E86AB",
+                               "Second Space" = "#A23B72",
+                               "Third Space" = "#F18F01")) +
+  # Annotation
+  annotate("text", x = 27, y = 4.2, 
+           label = "Inverse Pattern:\nMore people → Less time",
+           color = "darkred", size = 4.5, fontface = "bold") +
+  # Labels
+  labs(
+    title = "The Inverse Relationship: Population vs. Time Per Capita",
+    subtitle = "The more people in a Space, the fewer hours allocated per person",
+    x = "Population (Millions)",
+    y = "Hours Per Million People",
+    caption = "Correlation: r = -0.996 (nearly perfect negative relationship)"
+  ) +
+  # Theme
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 11, hjust = 0.5, color = "gray40"),
+    axis.title = element_text(size = 12, face = "bold"),
+    axis.text = element_text(size = 11),
+    legend.position = "none",
+    panel.grid.minor = element_blank(),
+    plot.caption = element_text(hjust = 0.5, face = "italic", color = "gray50")
+  ) +
+  # Adjusted limits
+  scale_x_continuous(breaks = seq(0, 50, 10), limits = c(0, 55), expand = c(0, 0)) +
+  scale_y_continuous(breaks = seq(0, 5, 1), limits = c(-0.5, 6), expand = c(0, 0))
 
-# Composite the images together - bottom right corner
-final_plot <- image_composite(plot_img, city_img_resized, 
-                              gravity = "southeast",
-                              offset = "-50-50")  # 50 pixels from right and bottom edges
+ggsave("population_vs_resources.png", width = 11, height = 7, dpi = 300)
 
-# Save the final image
-image_write(final_plot, "gantt_timeline_final.png")
-
-# Clean up temp file
-file.remove("temp_gantt.png")
-
-cat("✓ Final plot saved as: gantt_timeline_final.png\n")
 
 
